@@ -277,8 +277,8 @@
 (define (check-pipe-collisions bird pipes)
   (let iter ((p pipes))
     (if (null? p)
-        #t
-        (and (check-collision-rectangles (make-posn (get-bird-x bird) (get-bird-y bird)) (make-posn (+ (get-bird-x bird) bird-width) (- (get-bird-y bird) bird-height))
+        #f
+        (or (check-collision-rectangles (make-posn (get-bird-x bird) (get-bird-y bird)) (make-posn (+ (get-bird-x bird) bird-width) (- (get-bird-y bird) bird-height))
                                          (make-posn (get-pipe-x (car pipes)) scene-height) (make-posn (+ (get-pipe-x (car pipes)) pipe-width) (- scene-height (get-pipe-gap-y (car pipes)))))
              (check-collision-rectangles (make-posn (get-bird-x bird) (get-bird-y bird)) (make-posn (+ (get-bird-x bird) bird-width) (- (get-bird-y bird) bird-height))
                                          (make-posn (get-pipe-x (car pipes)) (- (get-pipe-gap-y (car pipes)) pipe-self-gap)) (make-posn (+ (get-pipe-x (car pipes)) pipe-width) 0))
