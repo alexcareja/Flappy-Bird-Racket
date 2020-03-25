@@ -26,11 +26,12 @@
   (make-pen "darkslategray" 5 "solid" "round" "round"))))
 
 
+(define-struct ability (image time pos next) #:transparent)
 ; Fiecare funcție returneaza o componenta a unei abilități.
-(define (get-ability-image ability) 'your-code-here)
-(define (get-ability-time  ability) 'your-code-here)
-(define (get-ability-pos   ability) 'your-code-here)
-(define (get-ability-next  ability) 'your-code-here)
+(define (get-ability-image a) (ability-image a))
+(define (get-ability-time  a) (ability-time a))
+(define (get-ability-pos   a) (ability-pos a))
+(define (get-ability-next  a) (ability-next a))
 
 ; Returneaza o poziție aleatorie în POSITION_RANGE.
 (define (random-position range)
@@ -44,7 +45,7 @@
 ; una aletorie.
 ; Folosiți random-position
 (define (position-abilities abilities)
-	'your-code-here)
+  'your-code-here)
 
 ; Fiecare abilitate are o funcție next care modifica stare jocului
 ; Compuneti toate funcțiile next în una singură

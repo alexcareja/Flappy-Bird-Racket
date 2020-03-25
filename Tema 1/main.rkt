@@ -5,6 +5,7 @@
 (require 2htdp/universe)
 (require lang/posn)
 
+(require "random.rkt")
 (require "abilities.rkt")
 (require "constants.rkt")
 ;---------------------------------------checker_exports------------------------------------------------
@@ -83,8 +84,7 @@
 (define (get-score s) (state-score s))
 (define (get-variables s) (state-var s))
 
-(define-struct bird (x y v-y) #:transparent)
-(define (get-bird-x b) (bird-x b))
+(define-struct bird (y v-y) #:transparent)
 (define (get-bird-y b) (bird-y b))
 (define (get-bird-v-y b) (bird-v-y b))
 
@@ -98,7 +98,7 @@
 (define (get-variables-gravity v) (var-gravity v))
 (define (get-variables-scroll-speed v) (var-scroll-speed v))
 
-(define init-bird (bird bird-x bird-initial-y 0))
+(define init-bird (bird bird-initial-y 0))
 (define init-pipe (pipe scene-width (+ added-number (random random-threshold))))
 (define init-var (var initial-momentum initial-gravity initial-scroll-speed))
 ;    y = bird-inițial-y
@@ -145,7 +145,7 @@
 ; parametri o structură de tip pasăre, și gravitația(un număr real). Aceasta va adaugă
 ; vitezei pe y a păsării, gravitația.
 (define (next-state-bird b gravity)
-  (struct-copy bird b [v-y (+ (get-bird-v-y) gravity)]))
+  (struct-copy bird b [y (+ (get-bird-y b) (get-bird-v-y b))] [v-y (+ (get-bird-v-y b) gravity)]))
 
 ;TODO 4
 ; După aceasta, implementati un getter care extrage din structura voastră
@@ -159,7 +159,7 @@
 ; o structură de tip pasăre, momentum(un număr real), și va schimbă viteza
 ; pe y a păsării cu acea valoare.
 (define (next-state-bird-onspace b momentum)
-  (struct-copy bird b [v-y momentum]))
+  (struct-copy bird b [v-y (* -1 momentum)]))
 
 ; Change
 ; Change va fi responsabil de input-ul de la tastatură al jocului.
@@ -169,7 +169,7 @@
 ; funcția next-state-bird-onspace. Pentru orice altă tasta, starea rămâne aceeași.
 (define (change current-state pressed-key)
   (if (key=? pressed-key " ")
-      (next-state-bird-onspace (get-bird current-state) (get-variables-momentum (get-variables current-state)))
+      (struct-copy state current-state [b (next-state-bird-onspace (get-bird current-state) (get-variables-momentum (get-variables current-state)))])
       current-state))
 
 ;TODO 9
@@ -190,7 +190,7 @@
 ; și scroll-speed(un număr real). Aceasta va adaugă x-ului fiecărui pipe
 ; scroll-speed-ul dat.
 (define (move-pipes pipes scroll-speed)
-  (map (λ (x) (- x scroll-speed)) pipes))
+  (map (λ (p) (struct-copy pipe p [x (- (get-pipe-x p) scroll-speed)])) pipes))
 
 ;TODO 12
 ; Vom implementa logica prin care pipe-urile vor fi șterse din stare. În momentul
@@ -200,7 +200,7 @@
 ;
 ; Hint: cunoaștem lățimea unui pipe, pipe-width
 (define (clean-pipes pipes)
-  (filter (λ (x) (> (+ x pipe-width) 0)) pipes))
+  (filter (λ (p) (> (+ (get-pipe-x p) pipe-width) 0)) pipes))
 
 
 ;TODO 13
@@ -209,14 +209,10 @@
 ; din stare și, dacă avem mai puțin de no-pipes pipe-uri, mai adăugăm una la mulțime,
 ; având x-ul egal cu pipe-width + pipe-gap + x-ul celui mai îndepărtat pipe, în raport
 ; cu pasărea.
-(define (last-pipe pipes)
-  (if (= 1 (length pipes))
-      (car pipes)
-      (last-pipe (cdr pipes))))
 
 (define (add-more-pipes pipes)
   (if (< (length pipes) no-pipes)
-      (append pipes (list (pipe (+ pipe-width pipe-gap (get-pipe-x (last-pipe pipes))) (+ added-number (random random-threshold)))))
+      (append pipes (list (pipe (+ pipe-width pipe-gap (get-pipe-x (last pipes))) (+ added-number (random random-threshold)))))
       pipes))
 
 ;TODO 14
@@ -243,7 +239,7 @@
 ; Coliziunea ar presupune ca un colț inferior al păsării să aibă y-ul
 ; mai mare sau egal cu cel al pământului.
 (define (check-ground-collision bird)
-  (>= ground-y (- (get-bird-y bird) bird-height)))
+  (<= ground-y (+ (get-bird-y bird) bird-height)))
 
 ; invalid-state?
 ; invalid-state? îi va spune lui big-bang dacă starea curentă mai este valida,
@@ -278,15 +274,15 @@
   (let iter ((p pipes))
     (if (null? p)
         #f
-        (or (check-collision-rectangles (make-posn (get-bird-x bird) (get-bird-y bird)) (make-posn (+ (get-bird-x bird) bird-width) (- (get-bird-y bird) bird-height))
-                                         (make-posn (get-pipe-x (car pipes)) scene-height) (make-posn (+ (get-pipe-x (car pipes)) pipe-width) (- scene-height (get-pipe-gap-y (car pipes)))))
-             (check-collision-rectangles (make-posn (get-bird-x bird) (get-bird-y bird)) (make-posn (+ (get-bird-x bird) bird-width) (- (get-bird-y bird) bird-height))
-                                         (make-posn (get-pipe-x (car pipes)) (- (get-pipe-gap-y (car pipes)) pipe-self-gap)) (make-posn (+ (get-pipe-x (car pipes)) pipe-width) 0))
-             (iter (cdr pipes))))))
-
+        (or (check-collision-rectangles (make-posn bird-x (get-bird-y bird)) (make-posn (+ bird-x bird-width) (+ (get-bird-y bird) bird-height))
+                                         (make-posn (get-pipe-x (car p)) 0) (make-posn (+ (get-pipe-x (car p)) pipe-width) (get-pipe-gap-y (car p))))
+             (check-collision-rectangles (make-posn bird-x (get-bird-y bird)) (make-posn (+ bird-x bird-width) (+ (get-bird-y bird) bird-height))
+                                         (make-posn (get-pipe-x (car p)) (+ (get-pipe-gap-y (car p)) pipe-self-gap)) (make-posn (+ (get-pipe-x (car p)) pipe-width) scene-height))
+             (iter (cdr p))))))
+;(make-posn (get-pipe-x (car p)) (- (get-pipe-gap-y (car p)) pipe-self-gap))
 (define (check-collision-rectangles A1 A2 B1 B2)
   (match-let ([(posn AX1 AY1) A1]
-              [(posn AX2 AY2) A2]
+              [(posn AX2 AY2) A2] 
               [(posn BX1 BY1) B1]
               [(posn BX2 BY2) B2])
     (and (< AX1 BX2) (> AX2 BX1) (< AY1 BY2) (> AY2 BY1))))
@@ -308,7 +304,7 @@
 ; Vrem ca next-state să incrementeze scorul cu 0.1 la fiecare cadru.
 (define (next-state current-state)
   (struct-copy state current-state [b (next-state-bird (get-bird current-state) (get-variables-gravity (get-variables current-state)))]
-               [pipes (next-state-pipes (get-pipes current-state) (get-variables-scroll-speed current-state))]
+               [pipes (next-state-pipes (get-pipes current-state) (get-variables-scroll-speed (get-variables current-state)))]
                [score (+ 0.1 (get-score current-state))]))
 
 ; draw-frame
@@ -333,22 +329,24 @@
 
 (define text-family (list "Gill Sans" 'swiss 'normal 'bold #f))
 (define (score-to-image x)
-	(apply text/font (~v (round x)) 24 "indigo" text-family))
+(if SHOW_SCORE
+	(apply text/font (~v (round x)) 24 "indigo" text-family)
+	empty-image))
 
 (define (draw-frame state)
-  (place-image bird-image (quotient (+ ( * 2(get-bird-x (get-bird state))) bird-width) 2) (quotient (- (* 2 (get-bird-y (get-bird state))) bird-height) 2)
-               (place-image ground-image (quotient scene-width 2) (quotient ground-height 2)
+  (place-image bird-image (/ (+ (* 2 bird-x) bird-width) 2) (/ (+ (* 2 (get-bird-y (get-bird state))) bird-height) 2)
+               (place-image ground-image (/ scene-width 2) (- scene-height (/ ground-height 2))
                             (place-image (score-to-image (get-score state)) text-x text-y
                                          (place-pipes (get-pipes state) initial-scene)))))
 
 ; Folosind `place-image/place-images` va poziționa pipe-urile pe scenă.
 (define (place-pipes pipes scene)
 	(let iter ((p pipes))
-          (if (null? p)
+          (if (or (null? p) (>= (get-pipe-x (car p)) scene-width))
               scene
-              (place-image (rectangle pipe-width pipe-self-gap "solid" "white") (quotient (+ (* 2 (get-pipe-x (car p))) pipe-width) 2) (quotient (- (* 2 (get-pipe-gap-y (car p))) pipe-self-gap) 2)
-                           (place-image (rectangle pipe-width scene-height "solid" "green") (quotient (+ (* 2 (get-pipe-x (car p))) pipe-width) 2)
-                                        (quotient scene-height 2) (iter (cdr pipes)))))))
+              (place-image (rectangle pipe-width (get-pipe-gap-y (car p)) "solid" "green") (/ (+ (* 2 (get-pipe-x (car p))) pipe-width) 2) (/ (get-pipe-gap-y (car p)) 2)
+                           (place-image (rectangle pipe-width (- pipe-height (get-pipe-gap-y ( car p)) pipe-self-gap ground-height) "solid" "green") (/ (+ (* 2 (get-pipe-x (car p))) pipe-width) 2)
+                                        (- (/ (+ scene-height (get-pipe-gap-y (car p)) pipe-self-gap) 2) (/ ground-height 2)) (iter (cdr p)))))))
 
 ; Bonus
 ; Completați abilities.rkt mai întâi, aceste funcții căt, apoi legați
@@ -447,5 +445,5 @@
 	 [to-draw draw-frame]
 	 [on-key change]
 	 [stop-when invalid-state?]
-	 [close-on-stop #t]
+	 [close-on-stop #f]
 	 [record? #f]))
