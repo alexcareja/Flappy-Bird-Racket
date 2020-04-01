@@ -26,8 +26,8 @@
   (make-pen "darkslategray" 5 "solid" "round" "round"))))
 
 
-(define-struct ability (image time pos next) #:transparent)
 ; Fiecare funcție returneaza o componenta a unei abilități.
+(define-struct ability (image time pos next) #:transparent)
 (define (get-ability-image a) (ability-image a))
 (define (get-ability-time  a) (ability-time a))
 (define (get-ability-pos   a) (ability-pos a))
@@ -45,13 +45,15 @@
 ; una aletorie.
 ; Folosiți random-position
 (define (position-abilities abilities)
-  'your-code-here)
+	(map (λ (a) (if (null? (get-ability-pos a))
+                        (struct-copy ability a [pos (random-position POSITION_RANGE)])
+                        a)) abilities))
 
 ; Fiecare abilitate are o funcție next care modifica stare jocului
 ; Compuneti toate funcțiile next în una singură
 ; Hint: compose
 (define (compose-abilities L)
-	'your-code-here)
+	(apply compose (map get-ability-next L)))
 
 ; Primiște o listă de abilități inițiale, un număr n
 ; și o listă cu toate abilități posibile.
@@ -59,4 +61,6 @@
 ; Atentie n poate fi chiar si 0 cand vrem sa jucam fara nicio abilitate.
 ; Folosiți choice-abilities.
 (define (fill-abilities initial n abilities)
-	'your-code-here)
+	(if (= n (length initial))
+            initial
+            (append initial (choice-abilities (- n (length initial)) abilities))))

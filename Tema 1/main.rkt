@@ -6,6 +6,7 @@
 (require lang/posn)
 
 (require "random.rkt")
+(make-predictive '(42))
 (require "abilities.rkt")
 (require "constants.rkt")
 ;---------------------------------------checker_exports------------------------------------------------
@@ -31,6 +32,7 @@
 (provide get-bird)
 (provide get-bird-y)
 (provide get-bird-v-y)
+
 
 ; pipe
 (provide get-pipes)
@@ -325,7 +327,7 @@
 ; pipes -> pipe-width si pipe-height
 (define bird-image (rectangle bird-width bird-height  "solid" "yellow"))
 (define ground-image (rectangle scene-width ground-height "solid" "brown"))
-(define initial-scene (empty-scene scene-width scene-height))
+(define initial-scene (rectangle scene-width scene-height "solid" "white"))
 
 (define text-family (list "Gill Sans" 'swiss 'normal 'bold #f))
 (define (score-to-image x)
@@ -334,8 +336,8 @@
 	empty-image))
 
 (define (draw-frame state)
-  (place-image bird-image (/ (+ (* 2 bird-x) bird-width) 2) (/ (+ (* 2 (get-bird-y (get-bird state))) bird-height) 2)
-               (place-image ground-image (/ scene-width 2) (- scene-height (/ ground-height 2))
+  (place-image bird-image (+ bird-x (quotient bird-width 2)) (+ (get-bird-y (get-bird state)) (quotient bird-height 2))
+               (place-image ground-image (quotient scene-width 2) (- scene-height (quotient ground-height 2))
                             (place-image (score-to-image (get-score state)) text-x text-y
                                          (place-pipes (get-pipes state) initial-scene)))))
 
@@ -344,24 +346,25 @@
 	(let iter ((p pipes))
           (if (or (null? p) (>= (get-pipe-x (car p)) scene-width))
               scene
-              (place-image (rectangle pipe-width (get-pipe-gap-y (car p)) "solid" "green") (/ (+ (* 2 (get-pipe-x (car p))) pipe-width) 2) (/ (get-pipe-gap-y (car p)) 2)
-                           (place-image (rectangle pipe-width (- pipe-height (get-pipe-gap-y ( car p)) pipe-self-gap ground-height) "solid" "green") (/ (+ (* 2 (get-pipe-x (car p))) pipe-width) 2)
-                                        (- (/ (+ scene-height (get-pipe-gap-y (car p)) pipe-self-gap) 2) (/ ground-height 2)) (iter (cdr p)))))))
+              (place-image (rectangle pipe-width pipe-self-gap "solid" "white") (+ (get-pipe-x (car p)) (quotient pipe-width 2)) (+ (get-pipe-gap-y (car p)) (quotient pipe-self-gap 2))
+                           (place-image (rectangle pipe-width scene-height "solid" "green") (+ (get-pipe-x (car p)) (quotient pipe-width 2))
+                                        (quotient scene-height 2) (iter (cdr p)))))))
 
 ; Bonus
 ; Completați abilities.rkt mai întâi, aceste funcții căt, apoi legați
 ; această funcționalitate la jocul inițial.
 
+(define-struct ability (image time pos next) #:transparent)
 
 ; Abilitatea care va accelera timpul va dura 10 de secunde, va avea imaginea (hourglass "tomato")
 ; va avea inițial poziția null si va modifica scrolls-speed dupa formulă
 ; scroll-speed = scroll-speed + 1
-(define fast-ability 'your-code-here)
+(define fast-ability 'a);(ability (hourglass "tomato") 30 null (λ () (max 5 (- scroll-speed 1)))))
 
 ; Abilitatea care va încetini timpul va dura 30 de secunde, va avea imaginea (hourglass "mediumseagreen")
 ; va avea inițial poziția null si va modifica scrolls-speed dupa formulă
 ; scroll-speed = max(5, scroll-speed - 1)
-(define slow-ability 'your-code-here)
+(define slow-ability 'a);(ability (hourglass "mediumseagreen") 30 null (λ () (max 5 (- scroll-speed 1)))))
 
 ; lista cu toate abilităţile posibile în joc
 (define ABILITIES (list slow-ability fast-ability))
